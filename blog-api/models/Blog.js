@@ -22,9 +22,17 @@ const blogSchema = new mongoose.Schema({
         type:String,
         trim:true
     },
-    likes:{
-        type : String,
-        default : 0,
+    likes:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref : "User"
+    }],
+    likeCount:{
+        type:Number,
+        default:0
+    },
+    commentCount:{
+        type:Number,
+        default:0
     }
 },
 {
