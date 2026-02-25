@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const blogSchema = new mongoose.Schema({
-    user:{
+    userId:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User",
         required:true
@@ -16,15 +16,11 @@ const blogSchema = new mongoose.Schema({
     content:{
         type:String,
         required:true,
-        minlength:[100, "Title must be at least 100 character long"],
+        minlength:[100, "Content must be at least 100 character long"],
     },
     mediaURL:{
         type:String,
         trim:true
-    },
-    publishedAt:{
-        type:Date,
-        default : null
     },
     likes:{
         type : String,
