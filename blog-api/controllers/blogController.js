@@ -1,253 +1,100 @@
-const Blog = require("../models/Blog");
-const Comment = require("../models/Comment")
-const path = require("path")
-const fs = require("fs")
+const catchAsync = require('../utils/catchAsync');
+const { blogService } = require('../services');
 
-//Get all posts : 
-const getALLPost = async (req, res) => {
-    try {
-        const posts = await Blog.find({});
+//Get all posts :
+const getALLPost = catchAsync(async (req, res) => {
+  const posts = await blogService.getALLPost();
+  res.status(200).json({ Message: 'Posts', data: posts });
+});
 
-        res.status(200).json({ Message: "Posts", data: posts });
+//Get singal posts :
+const getSinglePost = catchAsync(async (req, res) => {
+  const post = await blogService.getPostById(req.params.id);
+  res.status(200).json({ message: 'Post found successfully', data: post });
+});
 
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-}
+//Create Post :
+const createPost = catchAsync(async (req, res) => {
+  const { title, content } = req.body;
 
+  const post = await blogService.createPost({
+    userId: req.user._id,
+    title,
+    content,
+    mediaURL: req.file?.filename,
+  });
 
-//Get singal posts : 
-const getSingalPost = async (req, res) => {
-    try {
-        const postId = req.params.id;
+  res.status(200).json({
+    message: 'Post successful',
+    data: post,
+  });
+});
 
-        const post = await Blog.find({ _id: postId });
-        if (!post) {
-            throw new Error("Post not found")
-        }
+//Edit Post :
+const editPost = catchAsync(async (req, res) => {
+  const post = await blogService.editPost({
+    postId: req.params.id,
+    userId: req.user._id,
+    body: req.body,
+    file: req.file,
+  });
+  res.status(200).json({ message: 'Post updated successfully', data: post });
+});
 
-        res.status(200).json({ Message: "Post found successfully", data: post });
+const deletePost = catchAsync(async (req, res) => {
+  const post = await blogService.deletePost({
+    postId: req.params.id,
+    userId: req.user._id,
+  });
+  res.status(200).json({ message: 'Post deleted successfully', data: post });
+});
 
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-}
+const toggleLike = catchAsync(async (req, res) => {
+  const post = await blogService.toggleLike({
+    postId: req.params.id,
+    userId: req.user._id,
+  });
+  res.status(200).json({
+    message: post.likes.includes(req.user._id) ? 'Post Liked' : 'Post Unliked',
+    data: post,
+  });
+});
 
+const addComment = catchAsync(async (req, res) => {
+  const comment = await blogService.addComment({
+    postId: req.params.id,
+    userId: req.user._id,
+    text: req.body.text,
+  });
+  res.status(200).json({ message: 'Comment added successfully', data: comment });
+});
 
-//Create Post : 
-const createPost = async (req, res) => {
-    try {
+const editComment = catchAsync(async (req, res) => {
+  const comment = await blogService.editComment({
+    commentId: req.params.commentId,
+    userId: req.user._id,
+    text: req.body.text,
+  });
+  res.status(200).json({ message: 'Comment updated successfully', data: comment });
+});
 
-        console.log(req.file)
-        const { title, content, } = req.body;
+const deleteComment = catchAsync(async (req, res) => {
+  const comment = await blogService.deleteComment({
+    postId: req.params.id,
+    commentId: req.params.commentId,
+    userId: req.user._id,
+  });
+  res.status(200).json({ message: 'Comment deleted successfully', data: comment });
+});
 
-        const user = req.user;
-
-        const post = await new Blog({
-            userId: user._id,
-            title,
-            content,
-            mediaURL: req.file?.filename
-        })
-
-        await post.save();
-
-        res.status(200).json({ Message: "Post successfull", data: post });
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-}
-
-//Edit Post : 
-const editPost = async (req, res) => {
-    try {
-        console.log(req.file)
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Blog not found");
-        }
-
-        const user = req.user;
-        if (req.file) {
-            const postMediaPath = path.join(__dirname, "../uploads", post.mediaURL);
-            fs.unlink(postMediaPath, (err) => {
-                if (err) {
-                    console.log("Error : File not delete")
-                }
-            })
-            req.body.mediaURL = req.file.filename;
-        }
-
-        if (post.userId.toString() !== user.id) {
-            throw new Error("Unauthorised acceess");
-        }
-
-        const updatedPost = await Blog.findByIdAndUpdate({ _id: req.params.id },
-            { $set: req.body },
-            { returnDocument: "after" }
-        )
-
-        res.status(200).json({ Message: "Post successfull", data: updatedPost });
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-}
-
-//Delete Post : 
-const deletePost = async (req, res) => {
-    try {
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Post not found");
-        }
-
-        const user = req.user;
-
-        if (post.userId.toString() !== user.id) {
-            throw new Error("Unauthorised acceess");
-        }
-
-        const postMediaPath = path.join(__dirname, "../uploads", post.mediaURL);
-        fs.unlink(postMediaPath, (err) => {
-            if (err) {
-                console.log("Error : File not delete")
-            }
-        })
-
-        const deletedPost = await Blog.findByIdAndDelete({ _id: req.params.id })
-
-        res.status(200).json({ Message: "Post successfully deleted", data: deletedPost });
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-}
-
-
-const handleLikeAndUnLike = async (req, res) => {
-    try {
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Post Not Found");
-        }
-
-        const isUserAlreadyLiked = post.likes.includes(req.user.id);
-
-        if (isUserAlreadyLiked) {
-            const updatedPost = await Blog.findByIdAndUpdate(req.params.id, {
-                $pull: { likes: req.user.id },
-                $inc: { likeCount: -1 }
-            }, { returnDocument: "after" })
-            return res.status(200).json({ Message: "Post Unliked", data: updatedPost })
-        } else {
-            const updatedPost = await Blog.findByIdAndUpdate(req.params.id, {
-                $addToSet: { likes: req.user.id },
-                $inc: { likeCount: 1 }
-            }, { returnDocument: "after" })
-            return res.status(200).json({ Message: "Post Liked", data: updatedPost })
-        }
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-
-}
-
-
-const comment = async (req, res) => {
-    try {
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Post Not Found");
-        }
-
-        const {text} = req.body;
-
-        const comment = await Comment.create({
-            postId:post.id,
-            userId:req.user.id,
-            text:text
-        });
-
-        await Blog.findByIdAndUpdate({_id:post.id},{
-            $inc:{commentCount : 1}
-        })
-
-        res.status(200).json({Message:"Commentend successfully", data :comment})
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-
-}
-
-
-const editComment = async (req, res) => {
-    try {
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Post Not Found");
-        }
-        
-        const comment = await Comment.findOne({_id:req.params.commentId});
-        if(!comment){
-            throw new Error("Comment Not Found");
-        }
-
-        if(comment.userId.toString() !== req.user.id){
-            throw new Error("Unauthorised Acess");
-        }
-
-        const updatedComment = await Comment.findByIdAndUpdate({_id:comment.id},{
-            text : req.body.text
-        },{
-            returnDocument:"after"
-        })
-        
-        res.status(200).json({ Message: "Comment successfully updated", data: updatedComment });
-        
-        
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-    
-}
-
-
-const deleteComment = async (req, res) => {
-    try {
-       
-        const post = await Blog.findOne({ _id: req.params.id });
-        if (!post) {
-            throw new Error("Post Not Found");
-        }
-
-        const comment = await Comment.findOne({_id:req.params.commentId});
-        if(comment.userId.toString() !== req.user.id){
-            throw new Error("Unauthorised Acess");
-        }
-
-        const deletedComment = await Comment.findByIdAndDelete({_id:req.params.commentId})
-
-        res.status(200).json({Message:"Comment successfully deleted", data : deletedComment});
-
-    } catch (err) {
-        res.status(400).send(err.message);
-    }
-
-}
-
-
-module.exports = { 
-    getALLPost, 
-    getSingalPost, 
-    createPost, 
-    editPost, 
-    deletePost, 
-    handleLikeAndUnLike,
-    comment,
-    editComment,
-    deleteComment
+module.exports = {
+  getALLPost,
+  getSinglePost,
+  createPost,
+  editPost,
+  deletePost,
+  toggleLike,
+  addComment,
+  editComment,
+  deleteComment,
 };

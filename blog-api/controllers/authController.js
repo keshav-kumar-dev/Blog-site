@@ -1,89 +1,125 @@
-const User = require("../models/User");
-const bcrypt = require("bcrypt")
+const httpStatus = require('http-status');
+const { userService, authService } = require('../services');
+const catchAsync = require('../utils/catchAsync');
 
-const sendToken = async (user,res)=>{
-    
-        const token =await user.signJWT();
-        if(!token){
-            throw new Error("Something went wrong");
-        }
-        res.cookie("token", token
-        //     ,{
-        //     httpOnly: true,
-        //     // secure:process.env.NODE_ENV === "production",
-        //     // sameSite:"Strict",
-        //     maxAge: 24*60*60*1000
-        // }
-    );
-    return token;
-}
+const sendToken = async (user, res) => {
+  const token = await user.signJWT();
+  if (!token) {
+    throw new Error('Something went wrong');
+  }
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // Ensure this is true in production
+    sameSite: 'Strict',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
+  return token;
+};
 
-const register = async(req,res)=>{
-    try{        
-        const {name,email,password} = req.body;
-        
-         if(!name || !email || !password){
-            throw new Error("All fileds are required");
-        }
+const register = catchAsync(async (req, res) => {
+  const user = await userService.createUser(req.body);
+  const tokens = await sendToken(user, res);
+  res.status(200).send({ user, tokens });
+});
 
-        const passwordHash = await bcrypt.hash(password,10);
-        
-        const user = new User({
-            name,
-            email,
-            password : passwordHash
-        });
-        await user.save();
-        await sendToken(user,res);
+const login = catchAsync(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await authService.loginUserWithEmailAndPassword(email, password);
+  const tokens = await sendToken(user, res);
+  res.send({ user, tokens });
+});
 
-        res.status(201).json({message : "User Successfully register", data : user})
-    }catch(err){
-        res.status(400).send(err.message)
-    }
-}
+const profile = catchAsync(async (req, res) => {
+  const user = req.user;
+  res.status(201).json({ message: 'User Profile', data: user });
+});
 
-const login = async(req,res)=>{
-    try{
+// const bcrypt = require('bcrypt');
 
-        const {email,password} = req.body;
+// const User = require('../models/User');
+// const catchAsync = require("../utils/catchAsync");
 
-        if(!email || !password){
-            throw new Error("Email and Password is required");
-        }
+// const sendToken = async (user, res) => {
+//   const token = await user.signJWT();
+//   if (!token) {
+//     throw new Error('Something went wrong');
+//   }
+//   res.cookie(
+//     'token',
+//     token
+//     //     ,{
+//     //     httpOnly: true,
+//     //     // secure:process.env.NODE_ENV === "production",
+//     //     // sameSite:"Strict",
+//     //     maxAge: 24*60*60*1000
+//     // }
+//   );
+//   return token;
+// };
 
-        const user = await User.findOne({email});
-        if(!user){
-            throw new Error("Invalid credentials")
-        }
+// const register = async (req, res) => {
+//   try {
+//     const { name, email, password } = req.body;
 
-        const passwordHash = user.password;
+//     if (!name || !email || !password) {
+//       throw new Error('All fileds are required');
+//     }
 
-        bcrypt.compare(password,passwordHash,(err,isMatch)=>{
-            if(err){
-                throw err;
-            }else if(!isMatch){
-                throw new Error("Invalid credentials")
-            }
-        });
+//     const passwordHash = await bcrypt.hash(password, 10);
 
-        await sendToken(user,res);
+//     const user = new User({
+//       name,
+//       email,
+//       password: passwordHash,
+//     });
+//     await user.save();
+//     await sendToken(user, res);
 
-        res.status(201).json({message : "User Successfully logged in", data : user})
-    }catch(err){
-        res.status(400).send(err.message)
-    }
-}
+//     res.status(201).json({ message: 'User Successfully register', data: user });
+//   } catch (err) {
+//     res.status(400).send(err.message);
+//   }
+// };
 
+// const login = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
 
-const profile = async(req,res)=>{
-    try{
+//     if (!email || !password) {
+//       throw new Error('Email and Password is required');
+//     }
 
-        const user = req.user;
-        
-        res.status(201).json({message : "User Profile", data : user})
-    }catch(err){
-        res.status(400).send(err.message)
-    }
-}
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       throw new Error('Invalid credentials');
+//     }
 
-module.exports = {register,login,profile};
+//     const passwordHash = user.password;
+
+//     bcrypt.compare(password, passwordHash, (err, isMatch) => {
+//       if (err) {
+//         throw err;
+//       } else if (!isMatch) {
+//         throw new Error('Invalid credentials');
+//       }
+//     });
+
+//     await sendToken(user, res);
+
+//     res.status(201).json({ message: 'User Successfully logged in', data: user });
+//   } catch (err) {
+//     res.status(400).send(err.message);
+//   }
+// };
+
+// const profile = async (req, res) => {
+//   try {
+//     const user = req.user;
+
+//     res.status(201).json({ message: 'User Profile', data: user });
+//   } catch (err) {
+//     res.status(400).send(err.message);
+//   }
+// };
+
+module.exports = { register, login, profile };
