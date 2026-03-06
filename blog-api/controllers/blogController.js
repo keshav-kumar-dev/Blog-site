@@ -61,12 +61,21 @@ const toggleLike = catchAsync(async (req, res) => {
 });
 
 const addComment = catchAsync(async (req, res) => {
+  console.log('bc', req.user);
   const comment = await blogService.addComment({
     postId: req.params.id,
     userId: req.user._id,
     text: req.body.text,
+    user: req.user,
   });
   res.status(200).json({ message: 'Comment added successfully', data: comment });
+});
+
+const getAllCommentWithPostId = catchAsync(async (req, res) => {
+  const comments = await blogService.getAllCommentWithPostId(req.params.id);
+  res
+    .status(200)
+    .json({ message: 'All Comment on this post successfully fetched', data: comments });
 });
 
 const editComment = catchAsync(async (req, res) => {
@@ -80,7 +89,6 @@ const editComment = catchAsync(async (req, res) => {
 
 const deleteComment = catchAsync(async (req, res) => {
   const comment = await blogService.deleteComment({
-    postId: req.params.id,
     commentId: req.params.commentId,
     userId: req.user._id,
   });
@@ -97,4 +105,5 @@ module.exports = {
   addComment,
   editComment,
   deleteComment,
+  getAllCommentWithPostId,
 };

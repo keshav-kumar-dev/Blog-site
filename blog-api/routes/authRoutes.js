@@ -10,6 +10,7 @@ const authRouter = express.Router();
 
 authRouter.post('/register', validate(authValidation.register), authController.register);
 authRouter.post('/login', validate(authValidation.login), authController.login);
+authRouter.post('/logout', authController.logout);
 authRouter.post(
   '/profile',
   passport.authenticate('jwt', { session: false }),

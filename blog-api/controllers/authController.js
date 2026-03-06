@@ -29,6 +29,16 @@ const login = catchAsync(async (req, res) => {
   res.send({ user, tokens });
 });
 
+const logout = catchAsync(async (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+  });
+
+  res.status(200).json({ message: 'Logout successful' });
+});
+
 const profile = catchAsync(async (req, res) => {
   const user = req.user;
   res.status(201).json({ message: 'User Profile', data: user });
@@ -122,4 +132,4 @@ const profile = catchAsync(async (req, res) => {
 //   }
 // };
 
-module.exports = { register, login, profile };
+module.exports = { register, login, logout, profile };

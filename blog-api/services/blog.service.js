@@ -2,6 +2,7 @@ const Blog = require('../models/Blog');
 const fs = require('fs');
 const path = require('path');
 const Comment = require('../models/Comment');
+const { getIO } = require('../services/socket');
 
 const createPost = async ({ userId, title, content, mediaURL }) => {
   const post = await Blog.create({
@@ -15,7 +16,7 @@ const createPost = async ({ userId, title, content, mediaURL }) => {
 };
 
 const getALLPost = async () => {
-  return await Blog.find({});
+  return await Blog.find({}).sort({ createdAt: -1 }).populate('userId', 'name photoURL');
 };
 
 const getPostById = async (postId) => {
@@ -72,33 +73,43 @@ const deletePost = async ({ postId, userId }) => {
 };
 
 const toggleLike = async ({ postId, userId }) => {
+  const io = getIO();
   const post = await Blog.findById(postId);
   if (!post) throw new Error('Post not found');
 
   const alreadyLiked = post.likes.includes(userId);
-
+  let updatedPost = '';
   if (alreadyLiked) {
-    return Blog.findByIdAndUpdate(
+    updatedPost = await Blog.findByIdAndUpdate(
       postId,
       { $pull: { likes: userId }, $inc: { likeCount: -1 } },
       { returnDocument: 'after' }
     );
   } else {
-    return Blog.findByIdAndUpdate(
+    updatedPost = await Blog.findByIdAndUpdate(
       postId,
       { $addToSet: { likes: userId }, $inc: { likeCount: 1 } },
       { returnDocument: 'after' }
     );
   }
+
+  io.emit('updatedLikeCount', { postId, likeCount: updatedPost.likeCount });
+
+  return updatedPost;
 };
 
 // Add comment
-const addComment = async ({ postId, userId, text }) => {
+const addComment = async ({ postId, userId, text, user }) => {
+  const io = getIO();
   const post = await Blog.findById(postId);
   if (!post) throw new Error('Post not found');
 
   const comment = await Comment.create({ postId, userId, text });
   await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+  await comment.populate('userId', 'name');
+
+  io.emit('newComment', { postId, comment });
+
   return comment;
 };
 
@@ -119,11 +130,13 @@ const editComment = async ({ commentId, userId, text }) => {
   return updatedComment;
 };
 
-// Delete comment
-const deleteComment = async ({ postId, commentId, userId }) => {
-  const post = await Blog.findById(postId);
-  if (!post) throw new Error('Post not found');
+const getAllCommentWithPostId = async (postId) => {
+  return await Comment.find({ postId }).populate('userId', 'name').sort({ createdAt: -1 });
+};
 
+// Delete comment
+const deleteComment = async ({ commentId, userId }) => {
+  const io = getIO();
   const comment = await Comment.findById(commentId);
   if (!comment) throw new Error('Comment not found');
 
@@ -132,7 +145,18 @@ const deleteComment = async ({ postId, commentId, userId }) => {
   }
 
   const deletedComment = await Comment.findByIdAndDelete(commentId);
-  await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: -1 } });
+
+  const updatedPost = await Blog.findByIdAndUpdate(
+    comment.postId,
+    { $inc: { commentCount: -1 } },
+    { returnDocument: 'after' }
+  );
+  console.log(updatedPost.commentCount, 'newc');
+  io.emit('commentDeleted', {
+    postId: comment.postId,
+    commentId: comment._id,
+    updatedPostCommentCount: updatedPost.commentCount,
+  });
 
   return deletedComment;
 };
@@ -147,4 +171,5 @@ module.exports = {
   addComment,
   editComment,
   deleteComment,
+  getAllCommentWithPostId,
 };

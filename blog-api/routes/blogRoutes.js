@@ -30,10 +30,12 @@ blogRouter.delete(
   validate(blogValidation.deleteBlog),
   blogCotroller.deletePost
 );
+
 blogRouter.post('/:id/like', authMiddleware, blogCotroller.toggleLike);
 
 blogRouter.patch('/:id/comment/:commentId', authMiddleware, blogCotroller.editComment);
-blogRouter.delete('/:id/comment/:commentId/', authMiddleware, blogCotroller.deleteComment);
+blogRouter.delete('/comment/:commentId/', authMiddleware, blogCotroller.deleteComment);
 blogRouter.post('/:id/comment/', authMiddleware, blogCotroller.addComment);
+blogRouter.get('/:id/comment/', authMiddleware, blogCotroller.getAllCommentWithPostId); //Get all comment on post with id
 
 module.exports = blogRouter;
