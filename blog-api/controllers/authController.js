@@ -1,34 +1,57 @@
-const httpStatus = require('http-status');
+const { status } = require('http-status');
 const { userService, authService } = require('../services');
 const catchAsync = require('../utils/catchAsync');
+const CustomError = require('../utils/CustomError');
+const config = require('../config/config');
 
+// Updated sendToken function with CustomError logic
 const sendToken = async (user, res) => {
   const token = await user.signJWT();
   if (!token) {
-    throw new Error('Something went wrong');
+    // Use CustomError to throw error when token generation fails
+    throw new CustomError(
+      'Something went wrong while generating the token',
+      status.INTERNAL_SERVER_ERROR
+    );
   }
+
   res.cookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production', // Ensure this is true in production
     sameSite: 'Strict',
-    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    maxAge: config.tokenExpiration,
   });
   return token;
 };
 
-const register = catchAsync(async (req, res) => {
+// Updated register function with CustomError logic
+const register = catchAsync(async (req, res, next) => {
   const user = await userService.createUser(req.body);
+
+  if (!user) {
+    // Use CustomError to handle case when user creation fails
+    return next(new CustomError('User creation failed', status.BAD_REQUEST));
+  }
+
   const tokens = await sendToken(user, res);
-  res.status(200).send({ user, tokens });
+  res.status(status.CREATED).send({ user, tokens });
 });
 
-const login = catchAsync(async (req, res) => {
+// Updated login function with CustomError logic
+const login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
+
   const user = await authService.loginUserWithEmailAndPassword(email, password);
-  const tokens = await sendToken(user, res);
-  res.send({ user, tokens });
+  if (!user) {
+    // Use CustomError if the login fails (e.g., wrong email or password)
+    return next(new CustomError('Invalid email or password', status.UNAUTHORIZED));
+  }
+
+  await sendToken(user, res);
+  res.status(status.OK).json({ data: user });
 });
 
+// Updated logout function with CustomError logic
 const logout = catchAsync(async (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
@@ -36,100 +59,18 @@ const logout = catchAsync(async (req, res) => {
     sameSite: 'Strict',
   });
 
-  res.status(200).json({ message: 'Logout successful' });
+  res.status(status.OK).json({ message: 'Logout successful' });
 });
 
-const profile = catchAsync(async (req, res) => {
+// Updated profile function with CustomError logic
+const profile = catchAsync(async (req, res, next) => {
   const user = req.user;
-  res.status(201).json({ message: 'User Profile', data: user });
+  if (!user) {
+    // Use CustomError when the user is not found in the request (unauthorized access)
+    return next(new CustomError('User not found', status.NOT_FOUND));
+  }
+
+  res.status(status.OK).json({ message: 'User Profile', data: user });
 });
-
-// const bcrypt = require('bcrypt');
-
-// const User = require('../models/User');
-// const catchAsync = require("../utils/catchAsync");
-
-// const sendToken = async (user, res) => {
-//   const token = await user.signJWT();
-//   if (!token) {
-//     throw new Error('Something went wrong');
-//   }
-//   res.cookie(
-//     'token',
-//     token
-//     //     ,{
-//     //     httpOnly: true,
-//     //     // secure:process.env.NODE_ENV === "production",
-//     //     // sameSite:"Strict",
-//     //     maxAge: 24*60*60*1000
-//     // }
-//   );
-//   return token;
-// };
-
-// const register = async (req, res) => {
-//   try {
-//     const { name, email, password } = req.body;
-
-//     if (!name || !email || !password) {
-//       throw new Error('All fileds are required');
-//     }
-
-//     const passwordHash = await bcrypt.hash(password, 10);
-
-//     const user = new User({
-//       name,
-//       email,
-//       password: passwordHash,
-//     });
-//     await user.save();
-//     await sendToken(user, res);
-
-//     res.status(201).json({ message: 'User Successfully register', data: user });
-//   } catch (err) {
-//     res.status(400).send(err.message);
-//   }
-// };
-
-// const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     if (!email || !password) {
-//       throw new Error('Email and Password is required');
-//     }
-
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       throw new Error('Invalid credentials');
-//     }
-
-//     const passwordHash = user.password;
-
-//     bcrypt.compare(password, passwordHash, (err, isMatch) => {
-//       if (err) {
-//         throw err;
-//       } else if (!isMatch) {
-//         throw new Error('Invalid credentials');
-//       }
-//     });
-
-//     await sendToken(user, res);
-
-//     res.status(201).json({ message: 'User Successfully logged in', data: user });
-//   } catch (err) {
-//     res.status(400).send(err.message);
-//   }
-// };
-
-// const profile = async (req, res) => {
-//   try {
-//     const user = req.user;
-
-//     res.status(201).json({ message: 'User Profile', data: user });
-//   } catch (err) {
-//     res.status(400).send(err.message);
-//   }
-// };
 
 module.exports = { register, login, logout, profile };

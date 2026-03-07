@@ -58,7 +58,7 @@ const PostCard = ({postData})=>{
                     </div>
                 </div>
                 <h1 className="text-center font-bold text-2xl">{postData.title}</h1>
-                <p className="overflow-auto">{postData.content}</p>
+                <p className="overflow-auto wrap-break-word">{postData.content}</p>
                 <img src={mediaURL} alt="Media" className="h-[50%] md:h-[60vh] w-full object-cover"/>
                 <div className="flex justify-between">
 

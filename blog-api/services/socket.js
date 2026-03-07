@@ -1,9 +1,10 @@
 const { Server } = require('socket.io');
+const CustomError = require('../utils/CustomError');
+const { status } = require('http-status');
 
 let io;
 
 const initSocket = async (server) => {
-  console.log('soc');
   io = new Server(server, {
     cors: {
       origin: ['http://127.0.0.1:5173', 'http://localhost:5173'],
@@ -21,7 +22,7 @@ const initSocket = async (server) => {
 
 const getIO = () => {
   if (!io) {
-    throw new Error('Socket.io not initialized');
+    throw new CustomError('Socket.io not initialized', status.BAD_REQUEST);
   }
   return io;
 };

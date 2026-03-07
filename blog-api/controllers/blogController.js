@@ -1,21 +1,34 @@
+const { status } = require('http-status');
 const catchAsync = require('../utils/catchAsync');
+const CustomError = require('../utils/CustomError');
 const { blogService } = require('../services');
 
-//Get all posts :
+// Get all posts
 const getALLPost = catchAsync(async (req, res) => {
   const posts = await blogService.getALLPost();
-  res.status(200).json({ Message: 'Posts', data: posts });
+  if (!posts || posts.length === 0) {
+    throw new CustomError('No posts found', status.NOT_FOUND); // If no posts are found, throw 404 error
+  }
+  res.status(status.OK).json({ message: 'Posts fetched successfully', data: posts });
 });
 
-//Get singal posts :
+// Get single post
 const getSinglePost = catchAsync(async (req, res) => {
   const post = await blogService.getPostById(req.params.id);
-  res.status(200).json({ message: 'Post found successfully', data: post });
+  if (!post) {
+    throw new CustomError('Post not found', status.NOT_FOUND); // Throw error if post not found
+  }
+  res.status(status.OK).json({ message: 'Post found successfully', data: post });
 });
 
-//Create Post :
+// Create post
 const createPost = catchAsync(async (req, res) => {
   const { title, content } = req.body;
+
+  // Check if required fields are missing
+  if (!title || !content) {
+    throw new CustomError('Title and content are required', status.BAD_REQUEST); // Throw 400 if fields are missing
+  }
 
   const post = await blogService.createPost({
     userId: req.user._id,
@@ -24,13 +37,13 @@ const createPost = catchAsync(async (req, res) => {
     mediaURL: req.file?.filename,
   });
 
-  res.status(200).json({
-    message: 'Post successful',
+  res.status(status.CREATED).json({
+    message: 'Post created successfully',
     data: post,
   });
 });
 
-//Edit Post :
+// Edit post
 const editPost = catchAsync(async (req, res) => {
   const post = await blogService.editPost({
     postId: req.params.id,
@@ -38,61 +51,97 @@ const editPost = catchAsync(async (req, res) => {
     body: req.body,
     file: req.file,
   });
-  res.status(200).json({ message: 'Post updated successfully', data: post });
+
+  if (!post) {
+    throw new CustomError('Post not found or unauthorized', status.NOT_FOUND); // Throw error if post is not found or unauthorized
+  }
+
+  res.status(status.OK).json({ message: 'Post updated successfully', data: post });
 });
 
+// Delete post
 const deletePost = catchAsync(async (req, res) => {
   const post = await blogService.deletePost({
     postId: req.params.id,
     userId: req.user._id,
   });
-  res.status(200).json({ message: 'Post deleted successfully', data: post });
+
+  if (!post) {
+    throw new CustomError('Post not found or unauthorized', status.NOT_FOUND); // Throw error if post is not found
+  }
+
+  res.status(status.OK).json({ message: 'Post deleted successfully', data: post });
 });
 
+// Toggle like
 const toggleLike = catchAsync(async (req, res) => {
   const post = await blogService.toggleLike({
     postId: req.params.id,
     userId: req.user._id,
   });
-  res.status(200).json({
+
+  if (!post) {
+    throw new CustomError('Post not found', status.NOT_FOUND); // Throw error if post not found
+  }
+
+  res.status(status.OK).json({
     message: post.likes.includes(req.user._id) ? 'Post Liked' : 'Post Unliked',
     data: post,
   });
 });
 
+// Add comment
 const addComment = catchAsync(async (req, res) => {
-  console.log('bc', req.user);
+  if (!req.body.text) {
+    throw new CustomError('Comment text is required', status.BAD_REQUEST); // Throw error if text is missing in comment
+  }
+
   const comment = await blogService.addComment({
     postId: req.params.id,
     userId: req.user._id,
     text: req.body.text,
     user: req.user,
   });
-  res.status(200).json({ message: 'Comment added successfully', data: comment });
+
+  res.status(status.CREATED).json({ message: 'Comment added successfully', data: comment });
 });
 
+// Get all comments with post ID
 const getAllCommentWithPostId = catchAsync(async (req, res) => {
   const comments = await blogService.getAllCommentWithPostId(req.params.id);
-  res
-    .status(200)
-    .json({ message: 'All Comment on this post successfully fetched', data: comments });
+  if (!comments || comments.length === 0) {
+    throw new CustomError('No comments found for this post', status.NOT_FOUND); // Throw error if no comments found
+  }
+  res.status(status.OK).json({ message: 'Comments fetched successfully', data: comments });
 });
 
+// Edit comment
 const editComment = catchAsync(async (req, res) => {
   const comment = await blogService.editComment({
     commentId: req.params.commentId,
     userId: req.user._id,
     text: req.body.text,
   });
-  res.status(200).json({ message: 'Comment updated successfully', data: comment });
+
+  if (!comment) {
+    throw new CustomError('Comment not found or unauthorized', status.NOT_FOUND); // Throw error if comment not found
+  }
+
+  res.status(status.OK).json({ message: 'Comment updated successfully', data: comment });
 });
 
+// Delete comment
 const deleteComment = catchAsync(async (req, res) => {
   const comment = await blogService.deleteComment({
     commentId: req.params.commentId,
     userId: req.user._id,
   });
-  res.status(200).json({ message: 'Comment deleted successfully', data: comment });
+
+  if (!comment) {
+    throw new CustomError('Comment not found or unauthorized', status.NOT_FOUND); // Throw error if comment not found
+  }
+
+  res.status(status.OK).json({ message: 'Comment deleted successfully', data: comment });
 });
 
 module.exports = {

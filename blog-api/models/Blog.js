@@ -10,7 +10,6 @@ const blogSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      trim: true,
       minlength: [5, 'Title must be at least 5 character long'],
       maxlength: [100, 'Title must be less than 100 character long'],
     },
@@ -21,7 +20,6 @@ const blogSchema = new mongoose.Schema(
     },
     mediaURL: {
       type: String,
-      trim: true,
     },
     likes: [
       {

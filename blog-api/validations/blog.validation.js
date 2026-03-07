@@ -31,7 +31,7 @@ const updateBlog = {
     .keys({
       title: Joi.string().trim().min(5).max(100),
       content: Joi.string().min(100),
-      mediaURL: Joi.string().uri(),
+      mediaURL: Joi.string().trim().uri(),
     })
     .min(1), // at least one field must be updated
 };

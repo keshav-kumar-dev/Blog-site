@@ -3,7 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const Comment = require('../models/Comment');
 const { getIO } = require('../services/socket');
+const { status } = require('http-status');
+const CustomError = require('../utils/CustomError'); // Import CustomError
 
+// Create Post
 const createPost = async ({ userId, title, content, mediaURL }) => {
   const post = await Blog.create({
     userId,
@@ -15,22 +18,25 @@ const createPost = async ({ userId, title, content, mediaURL }) => {
   return post;
 };
 
+// Get All Posts
 const getALLPost = async () => {
   return await Blog.find({}).sort({ createdAt: -1 }).populate('userId', 'name photoURL');
 };
 
+// Get Post by ID
 const getPostById = async (postId) => {
   const post = await Blog.findById(postId);
-  if (!post) throw new Error('Post not found');
+  if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
   return post;
 };
 
+// Edit Post
 const editPost = async ({ postId, userId, body, file }) => {
   const post = await Blog.findById(postId);
-  if (!post) throw new Error('Blog not found');
+  if (!post) throw new CustomError('Blog not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   if (post.userId.toString() !== userId.toString()) {
-    throw new Error('Unauthorized access');
+    throw new CustomError('Unauthorized access', status.FORBIDDEN); // Unauthorized access error with 403 status
   }
 
   // Handle file
@@ -52,12 +58,13 @@ const editPost = async ({ postId, userId, body, file }) => {
   return updatedPost;
 };
 
+// Delete Post
 const deletePost = async ({ postId, userId }) => {
   const post = await Blog.findById(postId);
-  if (!post) throw new Error('Post not found');
+  if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   if (post.userId.toString() !== userId.toString()) {
-    throw new Error('Unauthorized access');
+    throw new CustomError('Unauthorized access', status.FORBIDDEN); // Unauthorized access error with 403 status
   }
 
   // Delete media file
@@ -72,10 +79,11 @@ const deletePost = async ({ postId, userId }) => {
   return deletedPost;
 };
 
+// Toggle Like
 const toggleLike = async ({ postId, userId }) => {
   const io = getIO();
   const post = await Blog.findById(postId);
-  if (!post) throw new Error('Post not found');
+  if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   const alreadyLiked = post.likes.includes(userId);
   let updatedPost = '';
@@ -98,11 +106,11 @@ const toggleLike = async ({ postId, userId }) => {
   return updatedPost;
 };
 
-// Add comment
+// Add Comment
 const addComment = async ({ postId, userId, text, user }) => {
   const io = getIO();
   const post = await Blog.findById(postId);
-  if (!post) throw new Error('Post not found');
+  if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   const comment = await Comment.create({ postId, userId, text });
   await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
@@ -113,13 +121,13 @@ const addComment = async ({ postId, userId, text, user }) => {
   return comment;
 };
 
-// Edit comment
+// Edit Comment
 const editComment = async ({ commentId, userId, text }) => {
   const comment = await Comment.findById(commentId);
-  if (!comment) throw new Error('Comment not found');
+  if (!comment) throw new CustomError('Comment not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   if (comment.userId.toString() !== userId.toString()) {
-    throw new Error('Unauthorized access');
+    throw new CustomError('Unauthorized access', status.FORBIDDEN); // Unauthorized access error with 403 status
   }
 
   const updatedComment = await Comment.findByIdAndUpdate(
@@ -130,18 +138,19 @@ const editComment = async ({ commentId, userId, text }) => {
   return updatedComment;
 };
 
+// Get All Comments for a Post
 const getAllCommentWithPostId = async (postId) => {
   return await Comment.find({ postId }).populate('userId', 'name').sort({ createdAt: -1 });
 };
 
-// Delete comment
+// Delete Comment
 const deleteComment = async ({ commentId, userId }) => {
   const io = getIO();
   const comment = await Comment.findById(commentId);
-  if (!comment) throw new Error('Comment not found');
+  if (!comment) throw new CustomError('Comment not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   if (comment.userId.toString() !== userId.toString()) {
-    throw new Error('Unauthorized access');
+    throw new CustomError('Unauthorized access', status.FORBIDDEN); // Unauthorized access error with 403 status
   }
 
   const deletedComment = await Comment.findByIdAndDelete(commentId);
@@ -151,7 +160,6 @@ const deleteComment = async ({ commentId, userId }) => {
     { $inc: { commentCount: -1 } },
     { returnDocument: 'after' }
   );
-  console.log(updatedPost.commentCount, 'newc');
   io.emit('commentDeleted', {
     postId: comment.postId,
     commentId: comment._id,

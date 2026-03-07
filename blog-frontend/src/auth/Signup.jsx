@@ -29,8 +29,12 @@ const Signup = ()=>{
             navigate("/")
         }
         catch(err){
-            console.log(err.message)
-            setError(err.message);
+            if (err.response) {
+        setError(err.response.data.error);
+      } else {
+        // If there's no response, display a generic message
+        setError("Something went wrong, please try again.");
+      }
         }
     }
 
@@ -64,13 +68,13 @@ const Signup = ()=>{
                     />
                 </div>
 
-                <div className="text-red-600">
+                <div className="text-red-600 px-4">
                     {error}
                 </div>
                 <button type="submit" className="text-3xl bg-green-500 p-2 px-8 text-white m-4 rounded-md">SignUp</button>
 
             </form>
-        <Link to={"/login"}> Click here of <span className="text-blue-700 underline">Login</span></Link>
+        <Link to={"/login"}> Click here for <span className="text-blue-700 underline">Login</span></Link>
             </div>
         </div>
 

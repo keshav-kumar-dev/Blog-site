@@ -1,9 +1,10 @@
 const User = require('../models/User');
-const httpStatus = require('http-status');
+const { status } = require('http-status');
+const CustomError = require('../utils/CustomError');
 
 const createUser = async (userBody) => {
   if (await User.isEmailTaken(userBody.email)) {
-    throw new Error('Email already taken');
+    throw new CustomError('Email already taken', status.BAD_REQUEST);
   }
   return User.create(userBody);
 };

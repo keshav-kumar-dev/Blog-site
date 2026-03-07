@@ -11,8 +11,6 @@ const Comment = ({postData})=>{
     const [newCommentClick, setNewCommentClick] = useState(false);
     const [newCommentText, setNewCommentText] = useState("");
     const user = useSelector((store)=>store.user);
-  
-    // console.log(user)
 
     const fetchComment = async()=>{
         const res = await axios.get(`${BASE_URL}/api/blogs/${postData._id}/comment`,{withCredentials:true});
@@ -33,8 +31,6 @@ const Comment = ({postData})=>{
     const handleDelete = async(id)=>{
         try{
             const res = await axios.delete(`${BASE_URL}/api/blogs/comment/${id}`,{withCredentials:true})
-            console.log(res)
-
             
         }catch(err){
             console.log(err.message)
@@ -76,7 +72,7 @@ const Comment = ({postData})=>{
             </form>}
             {
                 allComments.map((ele,key)=>{
-                    console.log(ele)
+
                     return <div key={key} className="bg-slate-200 p-1 mb-1 px-4 rounded-md">
                         <div className="flex flex-row mb-1 justify-between">
                             <div className="flex flex-row">

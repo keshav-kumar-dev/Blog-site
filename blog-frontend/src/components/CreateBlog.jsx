@@ -32,9 +32,7 @@ const CreateBlog = ()=>{
                             "Content-Type" :"multipart/form-data"
                         }
                     })
-    
-                // dispatch(addUser(res.data))
-                console.log(res)
+
                 navigate("/")
             }
             catch(err){

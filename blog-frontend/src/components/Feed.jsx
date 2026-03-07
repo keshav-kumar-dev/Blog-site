@@ -35,10 +35,6 @@ const Feed = ()=>{
         feedPosts();
     },[]);
 
-    useEffect(()=>{
-        // console.log(allPost,"State updated")
-    },[allPost])
-
     return (
         <div className="w-full h-screen flex items-center flex-col">
             <nav className="bg-amber-400 w-full flex flex-row justify-between p-8">

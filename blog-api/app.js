@@ -13,6 +13,8 @@ const authRouter = require('./routes/authRoutes');
 const blogRouter = require('./routes/blogRoutes');
 const { initSocket } = require('./services/socket');
 
+const { json, urlencoded } = express;
+
 const app = express();
 const server = http.createServer(app);
 initSocket(server);
@@ -27,14 +29,24 @@ app.use(
 app.use(passport.initialize()); // Passport initialization
 passport.use('jwt', jwtStrategy);
 
-app.use(express.json());
+app.use(json());
 app.use(cookieParser());
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(urlencoded({ extended: true }));
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth/', authRouter);
 app.use('/api/blogs/', blogRouter);
+
+// Global error handler
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Something went wrong';
+
+  res.status(statusCode).json({
+    error: message,
+  });
+});
 
 async function startServer() {
   try {
