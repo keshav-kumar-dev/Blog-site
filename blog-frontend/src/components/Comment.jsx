@@ -58,12 +58,20 @@ const Comment = ({ postData }) => {
     })
   }
 
+  const removeComment = (comments, parentPath) =>{
+    return comments
+    .filter((c) => c.parentPath !== parentPath)
+    .map((c) => ({
+      ...c,
+      replies: removeComment(c.replies || [], parentPath)
+    }));
+}
+
   useEffect(() => {
     
     const socket = io(BASE_URL, { withCredentials: true });
 
     socket.on("newComment"  , ({ postId, comment }) => {
-      // console.log("nc",allComments)
       if (postId === postData._id) {
         setAllComments((prev) => [comment, ...prev]);
       }
@@ -82,11 +90,9 @@ const Comment = ({ postData }) => {
       setAllComments((prevComments)=>addReply(prevComments,comment));}
     })
 
-    socket.on("commentDeleted", ({ postId, commentId }) => {
+    socket.on("commentDeleted", ({ postId, parentPath}) => {
       if (postId === postData._id) {
-        setAllComments((prevComments) =>
-          prevComments.filter((ele) => ele._id !== commentId),
-        );
+        setAllComments((prev) => removeComment(prev, parentPath));
       }
     });
   }, [postData._id]);

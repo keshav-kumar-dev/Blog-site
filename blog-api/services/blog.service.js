@@ -113,6 +113,9 @@ const addComment = async ({ postId, userId, text }) => {
   if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   const comment = await Comment.create({ postId, userId, text });
+  comment.parentPath = comment._id.toString();
+  await comment.save();
+
   await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
   await comment.populate('userId', 'name photoURL');
 
@@ -127,7 +130,15 @@ const addCommentOnComment = async ({ postId, userId, text, parentCommentId }) =>
   const post = await Blog.findById(postId);
   if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
+  const parentComment = await Comment.findById(parentCommentId);
+  if (!parentComment) {
+    throw new CustomError('Parent comment not found', status.NOT_FOUND);
+  }
+
   const comment = await Comment.create({ postId, userId, text, parentCommentId });
+  comment.parentPath = `${parentComment.parentPath}/${comment._id}`;
+  await comment.save();
+
   await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
   await comment.populate([
     { path: 'userId', select: 'name photoURL' },
@@ -163,6 +174,7 @@ const editComment = async ({ commentId, userId, text }) => {
 const getAllCommentWithPostId = async (postId) => {
   return await Comment.find({ postId }).populate('userId', 'name photoURL').sort({ createdAt: -1 });
 };
+
 // Delete Comment
 const deleteComment = async ({ commentId, userId }) => {
   const io = getIO();
@@ -173,28 +185,30 @@ const deleteComment = async ({ commentId, userId }) => {
     throw new CustomError('Unauthorized access', status.FORBIDDEN); // Unauthorized access error with 403 status
   }
 
-  const deletedComment = await Comment.findByIdAndDelete(commentId);
-  if (!deletedComment) {
+  const id = comment.parentPath;
+  const nestedCommentDelete = await Comment.deleteMany({
+    parentPath: { $regex: `^${id}(/|$)` },
+  });
+
+  if (!nestedCommentDelete) {
     throw new CustomError('Failed to delete comment', status.INTERNAL_SERVER_ERROR);
   }
 
-  //Deleting nested comment
-  const nestedCommentDelete = await Comment.deleteMany({ parentCommentId: commentId });
-  const totalDelete = 1 + (nestedCommentDelete.deletedCount || 0);
-
   const updatedPost = await Blog.findByIdAndUpdate(
-    deletedComment.postId,
-    { $inc: { commentCount: -totalDelete } },
+    comment.postId,
+    { $inc: { commentCount: -nestedCommentDelete.deletedCount } },
     { returnDocument: 'after' }
   );
 
+  console.log(comment.parentPath);
   io.emit('commentDeleted', {
     postId: comment.postId,
     commentId: comment._id,
+    commentPath: comment.parentPath,
     updatedPostCommentCount: updatedPost.commentCount,
   });
 
-  return deletedComment;
+  return nestedCommentDelete;
 };
 
 module.exports = {

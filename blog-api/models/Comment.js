@@ -25,6 +25,11 @@ const commentSchema = new mongoose.Schema(
       ref: 'Comment',
       default: null,
     },
+    parentPath: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
