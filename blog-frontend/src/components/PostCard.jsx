@@ -7,7 +7,6 @@ import Comment from "./Comment";
 
 const PostCard = ({postData})=>{
 
-    console.log(postData)
     const [likesCount, setLikesCount] = useState(postData.likeCount);
     const [commentClick, setCommentClick] = useState(false);
     const [commentCount , setCommentCount]  = useState(postData.commentCount);
@@ -31,9 +30,15 @@ const PostCard = ({postData})=>{
             }
         })
 
+        socket.on("commentOnComment", ({postId, comment})=>{
+            if(postId === postData._id){
+                setCommentCount(commentCount=>commentCount+1)
+            }
+        })
+
+
          socket.on("commentDeleted", ({postId,updatedPostCommentCount})=>{
             if(postId === postData._id){
-                console.log(updatedPostCommentCount,"ucc")
                 setCommentCount(updatedPostCommentCount);
             }
         })
@@ -52,7 +57,7 @@ const PostCard = ({postData})=>{
             {postData &&
             <div className="w-full md:w-[40vw] my-4 p-4 md:px-10 border-2 rounded-2xl space-y-4 ">
                 <div>
-                    <div className="bg-slate-200 p-3 rounded-tl-md rounded-tr-md flex flex-row">
+                    <div className="bg-slate-200 p-3 rounded-tl-md rounded-tr-md flex flex-row mb-8">
                         <img src={postData.userId.photoURL} className="rounded-full w-10 h-10" alt="" />
                         <h3 className="text-3xl mx-2">{postData.userId.name}</h3>
                     </div>

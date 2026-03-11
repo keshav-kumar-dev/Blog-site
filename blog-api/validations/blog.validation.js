@@ -11,7 +11,7 @@ const createBlog = {
 
     content: Joi.string().min(100).required(),
 
-    mediaURL: Joi.string().uri().optional(),
+    mediaURL: Joi.string().uri().required(),
 
     // Prevent client from sending these
     likes: Joi.forbidden(),

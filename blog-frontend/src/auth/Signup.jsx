@@ -48,7 +48,7 @@ const Signup = ()=>{
             <form onSubmit={handleSubmit} className="bg-white rounded-md">
 
                 <div className=" flex flex-col space-y-2 p-4 ">
-                    <label htmlFor="username" className=" text-4xl">Username :</label>
+                    <label htmlFor="username" className=" text-4xl">Name :</label>
                     <input type="username" name="username" id="username" value={userName} onChange={(e)=>setUserName(e.target.value)} required placeholder="Enter your name"
                     className="border-2 p-2 rounded-sm"
                     />

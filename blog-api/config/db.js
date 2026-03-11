@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const catchAsync = require('../utils/catchAsync');
+const CustomError = require('../utils/CustomError');
 
 const db = catchAsync(async () => {
   try {
@@ -8,7 +9,7 @@ const db = catchAsync(async () => {
   } catch (err) {
     console.log('Database connection failed');
 
-    throw new Error('Database connection failed: ' + err.message);
+    throw new CustomError('Database connection failed: ' + err.message, 500);
   }
 });
 

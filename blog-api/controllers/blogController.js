@@ -30,6 +30,10 @@ const createPost = catchAsync(async (req, res) => {
     throw new CustomError('Title and content are required', status.BAD_REQUEST); // Throw 400 if fields are missing
   }
 
+  if (!req.file) {
+    throw new CustomError('Media is required', status.BAD_REQUEST);
+  }
+
   const post = await blogService.createPost({
     userId: req.user._id,
     title,
@@ -100,19 +104,51 @@ const addComment = catchAsync(async (req, res) => {
     postId: req.params.id,
     userId: req.user._id,
     text: req.body.text,
-    user: req.user,
   });
 
   res.status(status.CREATED).json({ message: 'Comment added successfully', data: comment });
+});
+
+// Add comment on comment
+const addCommentOnComment = catchAsync(async (req, res) => {
+  if (!req.body.text) {
+    throw new CustomError('Comment text is required', status.BAD_REQUEST); // Throw error if text is missing in comment
+  }
+
+  const comment = await blogService.addCommentOnComment({
+    postId: req.params.id,
+    userId: req.user._id,
+    text: req.body.text,
+    parentCommentId: req.params.commentId,
+  });
+  res
+    .status(status.CREATED)
+    .json({ message: 'Comment added on comment successfully', data: comment });
 });
 
 // Get all comments with post ID
 const getAllCommentWithPostId = catchAsync(async (req, res) => {
   const comments = await blogService.getAllCommentWithPostId(req.params.id);
   if (!comments || comments.length === 0) {
-    throw new CustomError('No comments found for this post', status.NOT_FOUND); // Throw error if no comments found
+    return res.status(status.OK).json({ message: 'Comments not avilable', data: comments });
   }
-  res.status(status.OK).json({ message: 'Comments fetched successfully', data: comments });
+
+  const map = {};
+  const arr = [];
+
+  comments.forEach((element) => {
+    map[element.id] = { ...element.toObject(), replies: [] };
+  });
+
+  comments.forEach((element) => {
+    if (element.parentCommentId) {
+      map[element.parentCommentId].replies.push(map[element.id]);
+    } else {
+      arr.push(map[element.id]);
+    }
+  });
+
+  res.status(status.OK).json({ message: 'Comments fetched successfully', data: arr });
 });
 
 // Edit comment
@@ -152,6 +188,7 @@ module.exports = {
   deletePost,
   toggleLike,
   addComment,
+  addCommentOnComment,
   editComment,
   deleteComment,
   getAllCommentWithPostId,

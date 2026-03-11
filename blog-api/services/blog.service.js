@@ -107,22 +107,41 @@ const toggleLike = async ({ postId, userId }) => {
 };
 
 // Add Comment
-const addComment = async ({ postId, userId, text, user }) => {
+const addComment = async ({ postId, userId, text }) => {
   const io = getIO();
   const post = await Blog.findById(postId);
   if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
 
   const comment = await Comment.create({ postId, userId, text });
   await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
-  await comment.populate('userId', 'name');
+  await comment.populate('userId', 'name photoURL');
 
   io.emit('newComment', { postId, comment });
 
   return comment;
 };
 
+// Add Comment
+const addCommentOnComment = async ({ postId, userId, text, parentCommentId }) => {
+  const io = getIO();
+  const post = await Blog.findById(postId);
+  if (!post) throw new CustomError('Post not found', status.NOT_FOUND); // Use CustomError with 404 status
+
+  const comment = await Comment.create({ postId, userId, text, parentCommentId });
+  await Blog.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+  await comment.populate([
+    { path: 'userId', select: 'name photoURL' },
+    { path: 'parentCommentId', select: 'userId text postId parentCommentId' },
+  ]);
+
+  io.emit('commentOnComment', { postId, comment });
+
+  return comment;
+};
+
 // Edit Comment
 const editComment = async ({ commentId, userId, text }) => {
+  const io = getIO();
   const comment = await Comment.findById(commentId);
   if (!comment) throw new CustomError('Comment not found', status.NOT_FOUND); // Use CustomError with 404 status
 
@@ -134,15 +153,16 @@ const editComment = async ({ commentId, userId, text }) => {
     commentId,
     { text },
     { returnDocument: 'after' }
-  );
+  ).populate('userId', 'name photoURL');
+
+  io.emit('updatedComment', { updatedComment });
   return updatedComment;
 };
 
 // Get All Comments for a Post
 const getAllCommentWithPostId = async (postId) => {
-  return await Comment.find({ postId }).populate('userId', 'name').sort({ createdAt: -1 });
+  return await Comment.find({ postId }).populate('userId', 'name photoURL').sort({ createdAt: -1 });
 };
-
 // Delete Comment
 const deleteComment = async ({ commentId, userId }) => {
   const io = getIO();
@@ -154,12 +174,20 @@ const deleteComment = async ({ commentId, userId }) => {
   }
 
   const deletedComment = await Comment.findByIdAndDelete(commentId);
+  if (!deletedComment) {
+    throw new CustomError('Failed to delete comment', status.INTERNAL_SERVER_ERROR);
+  }
+
+  //Deleting nested comment
+  const nestedCommentDelete = await Comment.deleteMany({ parentCommentId: commentId });
+  const totalDelete = 1 + (nestedCommentDelete.deletedCount || 0);
 
   const updatedPost = await Blog.findByIdAndUpdate(
-    comment.postId,
-    { $inc: { commentCount: -1 } },
+    deletedComment.postId,
+    { $inc: { commentCount: -totalDelete } },
     { returnDocument: 'after' }
   );
+
   io.emit('commentDeleted', {
     postId: comment.postId,
     commentId: comment._id,
@@ -177,6 +205,7 @@ module.exports = {
   deletePost,
   toggleLike,
   addComment,
+  addCommentOnComment,
   editComment,
   deleteComment,
   getAllCommentWithPostId,

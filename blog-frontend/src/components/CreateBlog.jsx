@@ -36,8 +36,12 @@ const CreateBlog = ()=>{
                 navigate("/")
             }
             catch(err){
-                console.log(err.message)
-                setError(err.message);
+                if (err.response) {
+                    setError(err.response.data.error);
+                } else {
+                    // If there's no response, display a generic message
+                    setError("Something went wrong, please try again.");
+                }
             }
         }
     
@@ -61,26 +65,26 @@ const CreateBlog = ()=>{
                 <div className=" flex flex-col space-y-2 p-4 ">
                     <label htmlFor="content" className=" text-4xl">Description :</label>
                     <textarea
-  name="content"
-  id="content"
-  value={content}
-  onChange={(e)=>setContent(e.target.value)}
-  className="border-2 p-2 rounded-sm h-[30vh]"
-></textarea>
+                    name="content"
+                    id="content"
+                    value={content}
+                    onChange={(e)=>setContent(e.target.value)}
+                    className="border-2 p-2 rounded-sm h-[30vh]"
+                    ></textarea>
                 </div>
 
                 <div className=" flex flex-col space-y-2 p-4 ">
                     <label htmlFor="blogmedia" className=" text-4xl">Media :</label>
                     <input
-  type="file"
-  name="blogmedia"
-  id="blogmedia"
-  onChange={(e)=>setMedia(e.target.files[0])}
-  className="border-2 p-2 rounded-sm"
-/>
+                        type="file"
+                        name="blogmedia"
+                        id="blogmedia"
+                        onChange={(e)=>setMedia(e.target.files[0])}
+                        className="border-2 p-2 rounded-sm"
+                        />
                 </div>
 
-                <div className="text-red-600">
+                <div className="text-red-600 ml-4">
                     {error}
                 </div>
                 <button type="submit" className="text-3xl bg-green-500 p-2 px-8 text-white m-4 rounded-md">Post</button>

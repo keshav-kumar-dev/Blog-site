@@ -34,7 +34,7 @@ const register = catchAsync(async (req, res, next) => {
   }
 
   const tokens = await sendToken(user, res);
-  res.status(status.CREATED).send({ user, tokens });
+  res.status(status.CREATED).send({ data: user, tokens });
 });
 
 // Updated login function with CustomError logic
