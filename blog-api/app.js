@@ -12,6 +12,7 @@ const db = require('./config/db');
 const authRouter = require('./routes/authRoutes');
 const blogRouter = require('./routes/blogRoutes');
 const { initSocket } = require('./services/socket');
+const errorHandler = require('./middlewares/error');
 
 const { json, urlencoded } = express;
 
@@ -38,15 +39,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth/', authRouter);
 app.use('/api/blogs/', blogRouter);
 
-// Global error handler
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Something went wrong';
-
-  res.status(statusCode).json({
-    error: message,
-  });
-});
+app.use(errorHandler);
 
 async function startServer() {
   try {

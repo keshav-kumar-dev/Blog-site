@@ -5,9 +5,17 @@ const { objectId } = require('./custom.validation');
 
 const createBlog = {
   body: Joi.object().keys({
-    userId: Joi.string().required().custom(objectId),
+    userId: Joi.string()
+      .required()
+      .custom(objectId)
+      .messages({ 'any.required': 'Login is required' }),
 
-    title: Joi.string().trim().min(5).max(100).required(),
+    title: Joi.string()
+      .trim()
+      .min(5)
+      .max(100)
+      .required()
+      .messages({ 'any.required': 'Title is required' }),
 
     content: Joi.string().min(100).required(),
 

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useSelector } from "react-redux";
 import { io } from "socket.io-client";
 import CommentItem from "./CommentItem";
+import toast from "react-hot-toast";
 
 const Comment = ({ postData }) => {
   const [allComments, setAllComments] = useState([]);
@@ -23,7 +24,7 @@ const Comment = ({ postData }) => {
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if(!user.user){
-      alert("Login for comment")
+      toast("Login required")
     }
     const res = await axios.post(
       `${BASE_URL}/api/blogs/${postData._id}/comment`,
