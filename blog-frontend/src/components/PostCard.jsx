@@ -43,6 +43,10 @@ const PostCard = ({postData})=>{
             }
         })
 
+        return ()=>{
+            socket.disconnect();
+        };
+
     },[])
 
     const handleLike = async(id)=>{

@@ -17,7 +17,6 @@ const Comment = ({ postData }) => {
       `${BASE_URL}/api/blogs/${postData._id}/comment`,
       { withCredentials: true },
     );
-    console.log("All commets:",res?.data?.data)
     setAllComments(res?.data?.data);
   };
 
@@ -58,15 +57,6 @@ const Comment = ({ postData }) => {
     })
   }
 
-  const removeComment = (comments, parentPath) =>{
-    return comments
-    .filter((c) => c.parentPath !== parentPath)
-    .map((c) => ({
-      ...c,
-      replies: removeComment(c.replies || [], parentPath)
-    }));
-}
-
   useEffect(() => {
     
     const socket = io(BASE_URL, { withCredentials: true });
@@ -90,11 +80,16 @@ const Comment = ({ postData }) => {
       setAllComments((prevComments)=>addReply(prevComments,comment));}
     })
 
-    socket.on("commentDeleted", ({ postId, parentPath}) => {
-      if (postId === postData._id) {
-        setAllComments((prev) => removeComment(prev, parentPath));
+    socket.on("commentDeleted", ({postId,commentId})=>{
+      if(postId === postData._id){         
+        setAllComments(prevComments => prevComments.filter(ele=>ele._id !== commentId));
       }
-    });
+    })
+
+    return ()=>{
+      socket.disconnect();
+    };
+
   }, [postData._id]);
 
   useEffect(() => {
